@@ -23,11 +23,14 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const productCollection = client.db('ProductsDB').collection('product')
+    const productCollection = client.db('ProductsDB').collection('Product')
     const addedProductCollection = client.db('ProductsDB').collection('addedProducts')
+    const cartCollection = client.db('ProductsDB').collection('MyCart')
+
     const featured = [
       {
         category: "Laptops",
+
         image: "https://i.ibb.co/c10ybVz/Dell-XPS-13-Plus-9320-3-5-K-MC-Solution-BD-846x1024.webp",
         name: "Dell XPS 13",
         rating: 4.7,
@@ -51,6 +54,7 @@ async function run() {
         category: "Tablets",
         image: "https://i.ibb.co/Nr9TqHv/4973-88132.jpg",
         name: "iPad Air",
+        brand: "Apple",
         rating: 4.9,
         price: 599.99
       },
@@ -74,15 +78,11 @@ async function run() {
     app.get('/', (req, res) => {
       res.send('Server is running')
     })
-    app.get('/featured/:id', async (req, res) => {
-      const id = req.params.id
-      const query = { _id: new ObjectId(id) }
-      const result = await productCollection.findOne(query)
-      res.send(result)
-    })
+
+
     app.post('/featured', async (req, res) => {
       const result = await productCollection.insertMany(featured)
-      console.log(featured)
+      
       res.send(result)
 
     })
@@ -91,6 +91,12 @@ async function run() {
       const result = await products.toArray()
       res.send(result)
 
+    })
+    app.get('/featured/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await productCollection.findOne(query)
+      res.send(result)
     })
     app.post('/addedProducts', async (req, res) => {
       const products = req.body
@@ -105,21 +111,75 @@ async function run() {
       res.send(result)
 
     })
-    
 
-    
+    app.get('/addedProducts/:brand_name', async (req, res) => {
+      const query = { brand_name: req.params.brand_name }
+      const brand = addedProductCollection.find(query)
+      const result = await brand.toArray()
+      res.send(result)
+    })
+    app.get('/addedProducts/:name/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await addedProductCollection.findOne(query)
+      res.send(result)
+    })
+ 
+
+ 
+
+    app.put('/addedProducts/:name/:id', async (req, res) => {
+      const id = req.params.id
+      const productUpdate = req.body
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          image: productUpdate.image,
+          name: productUpdate.name,
+          brand_name: productUpdate.brand_name,
+          type: productUpdate.type,
+          price: productUpdate.price,
+          description: productUpdate.description,
+          rating: productUpdate.rating
+        },
+
+      };
+      const result = await addedProductCollection.updateOne(filter, updateDoc, options)
+      res.send(result)
+    })
+
+    // cart related code 
+
+
+    app.post('/cart', (req, res) => {
+      const product = req.body
+      const result = cartCollection.insertOne(product)
+      res.send(result)
+    })
+    app.get('/cart', async (req, res) => {
+      const cursor = cartCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+
+    app.get('/cart/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id:new ObjectId(id) }
+      console.log(query)
+      const result = await cartCollection.findOne(query)
+      res.send(result)
+    })
+
 
 
     app.delete('/:id', async (req, res) => {
       const id = req.params.id
-
+      const query = {_id:new ObjectId(id)}
+      const result = await cartCollection.deleteOne(query)
       res.send(result)
     })
-    app.put('/:id', async (req, res) => {
-      const id = req.params.id
 
-      res.send(result)
-    })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
